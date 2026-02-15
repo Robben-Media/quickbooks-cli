@@ -57,3 +57,5 @@ brews:
     homepage: "https://github.com/builtbyrobben/quickbooks-cli"
     description: "QuickBooks Online accounting CLI"
     license: "MIT"
+    test: |
+      system "#{bin}/quickbooks-cli", "--version"
