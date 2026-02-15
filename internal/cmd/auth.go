@@ -20,6 +20,8 @@ import (
 	"github.com/builtbyrobben/quickbooks-cli/internal/secrets"
 )
 
+const sourceEnv = "env"
+
 type AuthCmd struct {
 	Login          AuthLoginCmd          `cmd:"" help:"Authenticate via OAuth 2.0 flow"`
 	SetCredentials AuthSetCredentialsCmd `cmd:"" help:"Set OAuth client ID and secret"`
@@ -112,6 +114,10 @@ func (cmd *AuthLoginCmd) Run(ctx context.Context) error {
 		})
 	}
 
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "OAuth tokens stored in keyring"}})
+	}
+
 	fmt.Fprintln(os.Stderr, "OAuth tokens stored in keyring. You are now authenticated.")
 
 	return nil
@@ -189,6 +195,10 @@ func (cmd *AuthSetCredentialsCmd) Run(ctx context.Context) error {
 		})
 	}
 
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "OAuth credentials stored in keyring"}})
+	}
+
 	fmt.Fprintln(os.Stderr, "OAuth credentials stored in keyring")
 
 	return nil
@@ -214,6 +224,10 @@ func (cmd *AuthSetRealmCmd) Run(ctx context.Context) error {
 			"status":  "success",
 			"message": "Realm ID stored in keyring",
 		})
+	}
+
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "Realm ID stored in keyring"}})
 	}
 
 	fmt.Fprintln(os.Stderr, "Realm ID stored in keyring")
@@ -247,7 +261,7 @@ func (cmd *AuthStatusCmd) Run(ctx context.Context) error {
 		status["has_"+key] = has || envOverride
 
 		if envOverride {
-			status[key+"_source"] = "env"
+			status[key+"_source"] = sourceEnv
 		} else if has {
 			status[key+"_source"] = "keyring"
 		}
@@ -257,25 +271,55 @@ func (cmd *AuthStatusCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, status)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN", "REALM_ID", "ACCESS_TOKEN", "STORAGE"}
+
+		credVal := func(key string) string {
+			has, _ := status["has_"+key].(bool)
+			source, _ := status[key+"_source"].(string)
+
+			if source == sourceEnv {
+				return sourceEnv
+			}
+
+			if has {
+				return "set"
+			}
+
+			return "missing"
+		}
+
+		rows := [][]string{{
+			credVal(secrets.KeyClientID),
+			credVal(secrets.KeyClientSecret),
+			credVal(secrets.KeyRefreshToken),
+			credVal(secrets.KeyRealmID),
+			credVal(secrets.KeyAccessToken),
+			"keyring",
+		}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	// Human-readable output
-	fmt.Fprintf(os.Stderr, "Storage: %s\n\n", status["storage_backend"])
+	fmt.Fprintf(os.Stdout, "Storage: %s\n\n", status["storage_backend"])
 
 	printCredStatus := func(label, key string) {
 		has, _ := status["has_"+key].(bool)
 		source, _ := status[key+"_source"].(string)
 
 		switch {
-		case source == "env":
-			fmt.Fprintf(os.Stderr, "  %-16s  set (env override)\n", label+":")
+		case source == sourceEnv:
+			fmt.Fprintf(os.Stdout, "  %-16s  set (env override)\n", label+":")
 		case has:
 			val, valErr := store.GetCredential(key)
 			if valErr == nil && len(val) > 8 {
-				fmt.Fprintf(os.Stderr, "  %-16s  %s...%s\n", label+":", val[:4], val[len(val)-4:])
+				fmt.Fprintf(os.Stdout, "  %-16s  %s...%s\n", label+":", val[:4], val[len(val)-4:])
 			} else {
-				fmt.Fprintf(os.Stderr, "  %-16s  set\n", label+":")
+				fmt.Fprintf(os.Stdout, "  %-16s  set\n", label+":")
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "  %-16s  not set\n", label+":")
+			fmt.Fprintf(os.Stdout, "  %-16s  not set\n", label+":")
 		}
 	}
 
@@ -306,6 +350,10 @@ func (cmd *AuthRemoveCmd) Run(ctx context.Context) error {
 			"status":  "success",
 			"message": "All credentials removed",
 		})
+	}
+
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "All credentials removed"}})
 	}
 
 	fmt.Fprintln(os.Stderr, "All credentials removed")

@@ -36,6 +36,13 @@ func (cmd *ReportsProfitAndLossCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, report)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"REPORT", "BASIS", "START", "END"}
+		rows := [][]string{{report.Header.ReportName, report.Header.ReportBasis, report.Header.StartPeriod, report.Header.EndPeriod}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	printReport(report)
 
 	return nil
@@ -58,6 +65,13 @@ func (cmd *ReportsBalanceSheetCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, report)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"REPORT", "BASIS", "START", "END"}
+		rows := [][]string{{report.Header.ReportName, report.Header.ReportBasis, report.Header.StartPeriod, report.Header.EndPeriod}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	printReport(report)

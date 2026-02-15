@@ -29,6 +29,17 @@ func (cmd *VendorsListCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "NAME", "BALANCE"}
+
+		var rows [][]string
+		for _, v := range result.Vendors {
+			rows = append(rows, []string{v.ID, v.DisplayName, fmt.Sprintf("%.2f", v.Balance)})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(result.Vendors) == 0 {
 		fmt.Fprintln(os.Stderr, "No vendors found")
 		return nil

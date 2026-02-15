@@ -39,6 +39,17 @@ func (cmd *InvoicesListCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "DOC_NUM", "CUSTOMER", "TOTAL", "BALANCE", "DATE"}
+
+		var rows [][]string
+		for _, inv := range result.Invoices {
+			rows = append(rows, []string{inv.ID, inv.DocNumber, inv.CustomerRef.Name, fmt.Sprintf("%.2f", inv.TotalAmt), fmt.Sprintf("%.2f", inv.Balance), inv.TxnDate})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(result.Invoices) == 0 {
 		fmt.Fprintln(os.Stderr, "No invoices found")
 		return nil
@@ -71,6 +82,13 @@ func (cmd *InvoicesGetCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "DOC_NUM", "CUSTOMER", "DATE", "DUE_DATE", "TOTAL", "BALANCE"}
+		rows := [][]string{{result.ID, result.DocNumber, result.CustomerRef.Name, result.TxnDate, result.DueDate, fmt.Sprintf("%.2f", result.TotalAmt), fmt.Sprintf("%.2f", result.Balance)}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Printf("ID: %s\n", result.ID)
@@ -130,6 +148,13 @@ func (cmd *InvoicesCreateCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "TOTAL"}
+		rows := [][]string{{result.ID, fmt.Sprintf("%.2f", result.TotalAmt)}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	fmt.Fprintf(os.Stderr, "Invoice created\n\n")
 	fmt.Printf("ID: %s\n", result.ID)
 	fmt.Printf("Total: %.2f\n", result.TotalAmt)
@@ -157,6 +182,13 @@ func (cmd *InvoicesSendCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "STATUS"}
+		rows := [][]string{{result.ID, "sent"}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	fmt.Fprintf(os.Stderr, "Invoice %s sent\n", result.ID)
 
 	return nil
@@ -180,6 +212,13 @@ func (cmd *InvoicesVoidCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "STATUS"}
+		rows := [][]string{{result.ID, "voided"}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Fprintf(os.Stderr, "Invoice %s voided\n", result.ID)

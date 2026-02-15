@@ -33,6 +33,17 @@ func (cmd *PaymentsListCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "CUSTOMER", "AMOUNT", "DATE"}
+
+		var rows [][]string
+		for _, pmt := range result.Payments {
+			rows = append(rows, []string{pmt.ID, pmt.CustomerRef.Name, fmt.Sprintf("%.2f", pmt.TotalAmt), pmt.TxnDate})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(result.Payments) == 0 {
 		fmt.Fprintln(os.Stderr, "No payments found")
 		return nil
@@ -73,6 +84,13 @@ func (cmd *PaymentsCreateCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "AMOUNT"}
+		rows := [][]string{{result.ID, fmt.Sprintf("%.2f", result.TotalAmt)}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Fprintf(os.Stderr, "Payment created\n\n")

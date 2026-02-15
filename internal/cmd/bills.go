@@ -32,6 +32,17 @@ func (cmd *BillsListCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "DOC_NUM", "VENDOR", "TOTAL", "BALANCE", "DATE"}
+
+		var rows [][]string
+		for _, bill := range result.Bills {
+			rows = append(rows, []string{bill.ID, bill.DocNumber, bill.VendorRef.Name, fmt.Sprintf("%.2f", bill.TotalAmt), fmt.Sprintf("%.2f", bill.Balance), bill.TxnDate})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(result.Bills) == 0 {
 		fmt.Fprintln(os.Stderr, "No bills found")
 		return nil
@@ -64,6 +75,13 @@ func (cmd *BillsGetCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "DOC_NUM", "VENDOR", "DATE", "DUE_DATE", "TOTAL", "BALANCE"}
+		rows := [][]string{{result.ID, result.DocNumber, result.VendorRef.Name, result.TxnDate, result.DueDate, fmt.Sprintf("%.2f", result.TotalAmt), fmt.Sprintf("%.2f", result.Balance)}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Printf("ID: %s\n", result.ID)
