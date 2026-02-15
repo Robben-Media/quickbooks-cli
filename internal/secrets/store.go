@@ -11,34 +11,60 @@ import (
 	"github.com/99designs/keyring"
 	"golang.org/x/term"
 
-	"github.com/builtbyrobben/cli-template/internal/config"
+	"github.com/builtbyrobben/quickbooks-cli/internal/config"
 )
 
+// Store provides credential storage operations.
 type Store interface {
-	GetAPIKey() (string, error)
-	SetAPIKey(key string) error
-	DeleteAPIKey() error
-	HasKey() (bool, error)
+	GetCredential(key string) (string, error)
+	SetCredential(key, value string) error
+	DeleteCredential(key string) error
+	HasCredential(key string) (bool, error)
+	DeleteAll() error
 }
 
+// KeyringStore implements Store using the system keyring.
 type KeyringStore struct {
 	ring keyring.Keyring
 }
 
+// Credential key constants for OAuth 2.0 storage.
 const (
-	apiKeyKey              = "api_key"
-	keyringPasswordEnv     = "PLACEHOLDER_CLI_KEYRING_PASS"
-	keyringBackendEnv      = "PLACEHOLDER_CLI_KEYRING_BACKEND"
-	keyringOpenTimeout     = 5 * time.Second
+	KeyClientID          = "client_id"
+	KeyClientSecret      = "client_secret"
+	KeyRefreshToken      = "refresh_token"
+	KeyRealmID           = "realm_id"
+	KeyAccessToken       = "access_token"
+	KeyAccessTokenExpiry = "access_token_expiry"
+)
+
+const (
+	keyringPasswordEnv = "QUICKBOOKS_CLI_KEYRING_PASS" //nolint:gosec // env var name, not a credential
+	keyringBackendEnv  = "QUICKBOOKS_CLI_KEYRING_BACKEND"
+	keyringOpenTimeout = 5 * time.Second
 )
 
 var (
-	errMissingAPIKey      = errors.New("missing API key")
-	errNoTTY              = errors.New("no TTY available for keyring file backend password prompt")
+	errMissingCredentialKey  = errors.New("missing credential key")
+	errMissingCredentialVal  = errors.New("credential value cannot be empty")
+	errNoTTY                 = errors.New("no TTY available for keyring file backend password prompt")
 	errInvalidKeyringBackend = errors.New("invalid keyring backend")
-	errKeyringTimeout     = errors.New("keyring connection timed out")
+	errKeyringTimeout        = errors.New("keyring connection timed out")
 )
 
+// AllCredentialKeys returns all known credential keys for iteration.
+func AllCredentialKeys() []string {
+	return []string{
+		KeyClientID,
+		KeyClientSecret,
+		KeyRefreshToken,
+		KeyRealmID,
+		KeyAccessToken,
+		KeyAccessTokenExpiry,
+	}
+}
+
+// KeyringBackendInfo describes which keyring backend is selected and why.
 type KeyringBackendInfo struct {
 	Value  string
 	Source string
@@ -46,17 +72,16 @@ type KeyringBackendInfo struct {
 
 const (
 	keyringBackendSourceEnv     = "env"
-	keyringBackendSourceConfig  = "config"
 	keyringBackendSourceDefault = "default"
 	keyringBackendAuto          = "auto"
 )
 
+// ResolveKeyringBackendInfo determines the keyring backend from environment.
 func ResolveKeyringBackendInfo() (KeyringBackendInfo, error) {
 	if v := normalizeKeyringBackend(os.Getenv(keyringBackendEnv)); v != "" {
 		return KeyringBackendInfo{Value: v, Source: keyringBackendSourceEnv}, nil
 	}
 
-	// Could read from config file here if needed
 	return KeyringBackendInfo{Value: keyringBackendAuto, Source: keyringBackendSourceDefault}, nil
 }
 
@@ -125,7 +150,7 @@ func openKeyring() (keyring.Keyring, error) {
 	}
 
 	cfg := keyring.Config{
-		ServiceName:             config.AppName,
+		ServiceName:              config.AppName,
 		KeychainTrustApplication: false,
 		AllowedBackends:          backends,
 		FileDir:                  keyringDir,
@@ -166,11 +191,12 @@ func openKeyringWithTimeout(cfg keyring.Config, timeout time.Duration) (keyring.
 		return res.ring, nil
 	case <-time.After(timeout):
 		return nil, fmt.Errorf("%w after %v (D-Bus SecretService may be unresponsive); "+
-			"set PLACEHOLDER_CLI_KEYRING_BACKEND=file and PLACEHOLDER_CLI_KEYRING_PASS=<password> to use encrypted file storage instead",
+			"set QUICKBOOKS_CLI_KEYRING_BACKEND=file and QUICKBOOKS_CLI_KEYRING_PASS=<password> to use encrypted file storage instead",
 			errKeyringTimeout, timeout)
 	}
 }
 
+// OpenDefault opens the default credential store.
 func OpenDefault() (Store, error) {
 	ring, err := openKeyring()
 	if err != nil {
@@ -180,87 +206,82 @@ func OpenDefault() (Store, error) {
 	return &KeyringStore{ring: ring}, nil
 }
 
-func (s *KeyringStore) GetAPIKey() (string, error) {
-	item, err := s.ring.Get(apiKeyKey)
+// GetCredential retrieves a credential by key.
+func (s *KeyringStore) GetCredential(key string) (string, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return "", errMissingCredentialKey
+	}
+
+	item, err := s.ring.Get(key)
 	if err != nil {
-		return "", fmt.Errorf("read API key: %w", err)
+		return "", fmt.Errorf("read credential %q: %w", key, err)
 	}
 
 	return string(item.Data), nil
 }
 
-func (s *KeyringStore) SetAPIKey(key string) error {
+// SetCredential stores a credential by key.
+func (s *KeyringStore) SetCredential(key, value string) error {
 	key = strings.TrimSpace(key)
 	if key == "" {
-		return errMissingAPIKey
+		return errMissingCredentialKey
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return errMissingCredentialVal
 	}
 
 	if err := s.ring.Set(keyring.Item{
-		Key:  apiKeyKey,
-		Data: []byte(key),
+		Key:  key,
+		Data: []byte(value),
 	}); err != nil {
-		return fmt.Errorf("store API key: %w", err)
+		return fmt.Errorf("store credential %q: %w", key, err)
 	}
 
 	return nil
 }
 
-func (s *KeyringStore) DeleteAPIKey() error {
-	if err := s.ring.Remove(apiKeyKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
-		return fmt.Errorf("delete API key: %w", err)
+// DeleteCredential removes a credential by key.
+func (s *KeyringStore) DeleteCredential(key string) error {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return errMissingCredentialKey
+	}
+
+	if err := s.ring.Remove(key); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+		return fmt.Errorf("delete credential %q: %w", key, err)
 	}
 
 	return nil
 }
 
-func (s *KeyringStore) HasKey() (bool, error) {
-	_, err := s.ring.Get(apiKeyKey)
+// HasCredential checks if a credential exists.
+func (s *KeyringStore) HasCredential(key string) (bool, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return false, errMissingCredentialKey
+	}
+
+	_, err := s.ring.Get(key)
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return false, nil
 		}
-		return false, err
+
+		return false, fmt.Errorf("check credential %q: %w", key, err)
 	}
+
 	return true, nil
 }
 
-// GetSecret retrieves a generic secret by key.
-func GetSecret(key string) ([]byte, error) {
-	key = strings.TrimSpace(key)
-	if key == "" {
-		return nil, errors.New("missing secret key")
-	}
-
-	ring, err := openKeyring()
-	if err != nil {
-		return nil, err
-	}
-
-	item, err := ring.Get(key)
-	if err != nil {
-		return nil, fmt.Errorf("read secret: %w", err)
-	}
-
-	return item.Data, nil
-}
-
-// SetSecret stores a generic secret by key.
-func SetSecret(key string, value []byte) error {
-	key = strings.TrimSpace(key)
-	if key == "" {
-		return errors.New("missing secret key")
-	}
-
-	ring, err := openKeyring()
-	if err != nil {
-		return err
-	}
-
-	if err := ring.Set(keyring.Item{
-		Key:  key,
-		Data: value,
-	}); err != nil {
-		return fmt.Errorf("store secret: %w", err)
+// DeleteAll removes all stored credentials.
+func (s *KeyringStore) DeleteAll() error {
+	for _, key := range AllCredentialKeys() {
+		if err := s.ring.Remove(key); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+			return fmt.Errorf("delete credential %q: %w", key, err)
+		}
 	}
 
 	return nil
