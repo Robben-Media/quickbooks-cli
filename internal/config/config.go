@@ -9,11 +9,9 @@ import (
 	"strings"
 )
 
-const AppName = "placeholder-cli"
+const AppName = "quickbooks-cli"
 
-var (
-	ErrConfigDir = errors.New("config directory error")
-)
+var ErrConfigDir = errors.New("config directory error")
 
 // ConfigDir returns the platform-specific config directory.
 // macOS: ~/Library/Application Support/{cli}/
@@ -28,12 +26,14 @@ func ConfigDir() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("%w: get home directory: %w", ErrConfigDir, err)
 		}
+
 		baseDir = filepath.Join(homeDir, "Library", "Application Support", AppName)
 	case "windows":
 		appData := os.Getenv("APPDATA")
 		if appData == "" {
 			return "", fmt.Errorf("%w: APPDATA not set", ErrConfigDir)
 		}
+
 		baseDir = filepath.Join(appData, AppName)
 	default: // Linux and other Unix-like systems
 		configHome := os.Getenv("XDG_CONFIG_HOME")
@@ -42,8 +42,10 @@ func ConfigDir() (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("%w: get home directory: %w", ErrConfigDir, err)
 			}
+
 			configHome = filepath.Join(homeDir, ".config")
 		}
+
 		baseDir = filepath.Join(configHome, AppName)
 	}
 
@@ -57,7 +59,7 @@ func EnsureConfigDir() (string, error) {
 		return "", err
 	}
 
-	if err := os.MkdirAll(configDir, 0700); err != nil {
+	if err := os.MkdirAll(configDir, 0o700); err != nil {
 		return "", fmt.Errorf("%w: create config directory: %w", ErrConfigDir, err)
 	}
 
@@ -74,7 +76,7 @@ func EnsureKeyringDir() (string, error) {
 
 	keyringDir := filepath.Join(configDir, "keyring")
 
-	if err := os.MkdirAll(keyringDir, 0700); err != nil {
+	if err := os.MkdirAll(keyringDir, 0o700); err != nil {
 		return "", fmt.Errorf("%w: create keyring directory: %w", ErrConfigDir, err)
 	}
 
@@ -87,11 +89,12 @@ func ConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(configDir, "config.json"), nil
 }
 
 // NormalizeEnvVarName converts a CLI name to an environment variable name.
-// Example: "clickup-cli" → "CLICKUP_CLI"
+// Example: "quickbooks-cli" -> "QUICKBOOKS_CLI"
 func NormalizeEnvVarName(cliName string) string {
 	return strings.ToUpper(strings.ReplaceAll(cliName, "-", "_"))
 }

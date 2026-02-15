@@ -101,6 +101,7 @@ linters:
       - path: _test\.go
         linters:
           - errcheck
+          - err113
           - cyclop
           - gocyclo
           - gosec
@@ -108,12 +109,19 @@ linters:
           - goconst
           - tagliatelle
           - paralleltest
+          - wrapcheck
       - path: internal/cmd/.*\.go
         linters:
           - err113
           - wrapcheck
           - dupl
           - wsl_v5
+          - tagliatelle
+      - path: internal/quickbooks/.*\.go
+        linters:
+          - tagliatelle
+      - path: internal/api/.*\.go
+        linters:
           - tagliatelle
       - path: cmd/.*\.go
         linters:
@@ -132,4 +140,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/builtbyrobben/cli-template
+        - github.com/builtbyrobben/quickbooks-cli

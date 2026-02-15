@@ -12,20 +12,24 @@ var (
 	date    = ""
 )
 
+// VersionCmd prints the version information.
 type VersionCmd struct{}
 
-func (cmd *VersionCmd) Run(ctx context.Context) error {
-	fmt.Printf("placeholder-cli %s\n", VersionString())
+func (cmd *VersionCmd) Run(_ context.Context) error {
+	fmt.Printf("quickbooks-cli %s\n", VersionString())
 	fmt.Printf("  Commit: %s\n", commit)
 	fmt.Printf("  Built:  %s\n", date)
 	fmt.Printf("  OS:     %s/%s\n", runtime.GOOS, runtime.GOARCH)
+
 	return nil
 }
 
+// VersionString returns the version string.
 func VersionString() string {
 	if version == "dev" {
 		return "dev (no version)"
 	}
+
 	return version
 }
 
@@ -39,9 +43,11 @@ func (e *ExitError) Error() string {
 	if e == nil {
 		return ""
 	}
+
 	if e.Err != nil {
 		return e.Err.Error()
 	}
+
 	return fmt.Sprintf("exit code %d", e.Code)
 }
 
@@ -49,5 +55,6 @@ func (e *ExitError) Unwrap() error {
 	if e == nil {
 		return nil
 	}
+
 	return e.Err
 }
