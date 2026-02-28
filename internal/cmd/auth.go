@@ -295,7 +295,7 @@ func (cmd *AuthStatusCmd) Run(ctx context.Context) error {
 			credVal(secrets.KeyRefreshToken),
 			credVal(secrets.KeyRealmID),
 			credVal(secrets.KeyAccessToken),
-			"keyring",
+			fmt.Sprintf("%v", status["storage_backend"]),
 		}}
 
 		return outfmt.WritePlain(os.Stdout, headers, rows)
