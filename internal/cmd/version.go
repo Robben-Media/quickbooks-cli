@@ -27,6 +27,14 @@ func (cmd *VersionCmd) Run(ctx context.Context) error {
 			"os":      runtime.GOOS + "/" + runtime.GOARCH,
 		})
 	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"VERSION", "COMMIT", "DATE", "OS"}
+		rows := [][]string{{VersionString(), commit, date, runtime.GOOS + "/" + runtime.GOARCH}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	fmt.Printf("quickbooks-cli %s\n", VersionString())
 	fmt.Printf("  Commit: %s\n", commit)
 	fmt.Printf("  Built:  %s\n", date)

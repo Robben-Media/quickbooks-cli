@@ -29,6 +29,17 @@ func (cmd *ItemsListCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "NAME", "TYPE", "PRICE"}
+
+		var rows [][]string
+		for _, item := range result.Items {
+			rows = append(rows, []string{item.ID, item.Name, item.Type, fmt.Sprintf("%.2f", item.UnitPrice)})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(result.Items) == 0 {
 		fmt.Fprintln(os.Stderr, "No items found")
 		return nil

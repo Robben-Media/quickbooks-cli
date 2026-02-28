@@ -32,6 +32,22 @@ func (cmd *CustomersListCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "NAME", "BALANCE", "EMAIL"}
+
+		var rows [][]string
+		for _, cust := range result.Customers {
+			email := ""
+			if cust.PrimaryEmailAddr != nil {
+				email = cust.PrimaryEmailAddr.Address
+			}
+
+			rows = append(rows, []string{cust.ID, cust.DisplayName, fmt.Sprintf("%.2f", cust.Balance), email})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(result.Customers) == 0 {
 		fmt.Fprintln(os.Stderr, "No customers found")
 		return nil
@@ -69,6 +85,18 @@ func (cmd *CustomersGetCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "NAME", "BALANCE", "EMAIL", "ACTIVE"}
+		email := ""
+		if result.PrimaryEmailAddr != nil {
+			email = result.PrimaryEmailAddr.Address
+		}
+
+		rows := [][]string{{result.ID, result.DisplayName, fmt.Sprintf("%.2f", result.Balance), email, fmt.Sprintf("%t", result.Active)}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Printf("ID: %s\n", result.ID)
@@ -121,6 +149,13 @@ func (cmd *CustomersCreateCmd) Run(ctx context.Context) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"ID", "NAME"}
+		rows := [][]string{{result.ID, result.DisplayName}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Fprintf(os.Stderr, "Customer created\n\n")
