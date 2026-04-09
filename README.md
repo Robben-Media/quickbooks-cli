@@ -4,13 +4,6 @@ A CLI tool for [QuickBooks Online](https://quickbooks.intuit.com/) built with Go
 
 ## Installation
 
-### Homebrew (macOS/Linux)
-
-```bash
-brew tap builtbyrobben/tap
-brew install quickbooks-cli
-```
-
 ### Download Binary
 
 Download the latest release from [GitHub Releases](https://github.com/builtbyrobben/quickbooks-cli/releases).
