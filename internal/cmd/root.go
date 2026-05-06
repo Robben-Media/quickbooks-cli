@@ -32,6 +32,7 @@ type CLI struct {
 	Invoices          InvoicesCmd          `cmd:"" help:"Invoice operations"`
 	Bills             BillsCmd             `cmd:"" help:"Bill operations"`
 	Payments          PaymentsCmd          `cmd:"" help:"Payment operations"`
+	SalesReceipts     SalesReceiptsCmd     `cmd:"" name:"sales-receipts" help:"Sales receipt operations"`
 	Purchases         PurchasesCmd         `cmd:"" help:"Expense and purchase operations"`
 	Checks            ChecksCmd            `cmd:"" help:"Check operations"`
 	CreditCardCharges CreditCardChargesCmd `cmd:"" name:"credit-card-charges" help:"Credit card charge operations"`

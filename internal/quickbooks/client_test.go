@@ -235,6 +235,54 @@ func TestPayments_Create_MissingCustomer(t *testing.T) {
 	}
 }
 
+func TestSalesReceipts_List(t *testing.T) {
+	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("query") != "SELECT * FROM SalesReceipt" {
+			t.Errorf("expected default SalesReceipt query, got %q", r.URL.Query().Get("query"))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(queryEnvelope{
+			QueryResponse: QueryResponse{
+				SalesReceipts: []SalesReceipt{
+					{ID: "1", DocNumber: "SR-1", TotalAmt: 125.00},
+				},
+			},
+		})
+	}))
+
+	result, err := client.SalesReceipts().List(context.Background(), "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.SalesReceipts) != 1 {
+		t.Errorf("expected 1 sales receipt, got %d", len(result.SalesReceipts))
+	}
+}
+
+func TestSalesReceipts_Get(t *testing.T) {
+	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v3/company/12345/salesreceipt/10" {
+			t.Errorf("expected sales receipt path, got %q", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(salesReceiptEnvelope{
+			SalesReceipt: SalesReceipt{ID: "10", DocNumber: "SR-10", TotalAmt: 250.00},
+		})
+	}))
+
+	result, err := client.SalesReceipts().Get(context.Background(), "10")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.DocNumber != "SR-10" {
+		t.Errorf("expected SR-10 doc number, got %q", result.DocNumber)
+	}
+}
+
 func TestPurchases_List(t *testing.T) {
 	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("query") != "SELECT * FROM Purchase" {
