@@ -27,16 +27,21 @@ type RootFlags struct {
 type CLI struct {
 	RootFlags `embed:""`
 
-	Version    kong.VersionFlag `help:"Print version and exit"`
-	Auth       AuthCmd          `cmd:"" help:"Auth and credentials"`
-	Invoices   InvoicesCmd      `cmd:"" help:"Invoice operations"`
-	Bills      BillsCmd         `cmd:"" help:"Bill operations"`
-	Payments   PaymentsCmd      `cmd:"" help:"Payment operations"`
-	Customers  CustomersCmd     `cmd:"" help:"Customer operations"`
-	Vendors    VendorsCmd       `cmd:"" help:"Vendor operations"`
-	Items      ItemsCmd         `cmd:"" help:"Item/service operations"`
-	Reports    ReportsCmd       `cmd:"" help:"Financial reports"`
-	VersionCmd VersionCmd       `cmd:"" name:"version" help:"Print version"`
+	Version           kong.VersionFlag     `help:"Print version and exit"`
+	Auth              AuthCmd              `cmd:"" help:"Auth and credentials"`
+	Invoices          InvoicesCmd          `cmd:"" help:"Invoice operations"`
+	Bills             BillsCmd             `cmd:"" help:"Bill operations"`
+	Payments          PaymentsCmd          `cmd:"" help:"Payment operations"`
+	Purchases         PurchasesCmd         `cmd:"" help:"Expense and purchase operations"`
+	Checks            ChecksCmd            `cmd:"" help:"Check operations"`
+	CreditCardCharges CreditCardChargesCmd `cmd:"" name:"credit-card-charges" help:"Credit card charge operations"`
+	BillPayments      BillPaymentsCmd      `cmd:"" name:"bill-payments" help:"Vendor bill payment operations"`
+	JournalEntries    JournalEntriesCmd    `cmd:"" name:"journal-entries" help:"General journal entry operations"`
+	Customers         CustomersCmd         `cmd:"" help:"Customer operations"`
+	Vendors           VendorsCmd           `cmd:"" help:"Vendor operations"`
+	Items             ItemsCmd             `cmd:"" help:"Item/service operations"`
+	Reports           ReportsCmd           `cmd:"" help:"Financial reports"`
+	VersionCmd        VersionCmd           `cmd:"" name:"version" help:"Print version"`
 }
 
 type exitPanic struct{ code int }

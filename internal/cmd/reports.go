@@ -11,8 +11,10 @@ import (
 )
 
 type ReportsCmd struct {
-	ProfitAndLoss ReportsProfitAndLossCmd `cmd:"" name:"profit-and-loss" help:"Profit and Loss report"`
-	BalanceSheet  ReportsBalanceSheetCmd  `cmd:"" name:"balance-sheet" help:"Balance Sheet report"`
+	ProfitAndLoss   ReportsProfitAndLossCmd   `cmd:"" name:"profit-and-loss" help:"Profit and Loss report"`
+	BalanceSheet    ReportsBalanceSheetCmd    `cmd:"" name:"balance-sheet" help:"Balance Sheet report"`
+	GeneralLedger   ReportsGeneralLedgerCmd   `cmd:"" name:"general-ledger" help:"General Ledger report"`
+	TransactionList ReportsTransactionListCmd `cmd:"" name:"transaction-list" help:"Transaction List report"`
 }
 
 type ReportsProfitAndLossCmd struct {
@@ -59,6 +61,71 @@ func (cmd *ReportsBalanceSheetCmd) Run(ctx context.Context) error {
 	}
 
 	report, err := client.Reports().BalanceSheet(ctx, cmd.Date)
+	if err != nil {
+		return err
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, report)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"REPORT", "BASIS", "START", "END"}
+		rows := [][]string{{report.Header.ReportName, report.Header.ReportBasis, report.Header.StartPeriod, report.Header.EndPeriod}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
+	printReport(report)
+
+	return nil
+}
+
+type ReportsGeneralLedgerCmd struct {
+	From   string `help:"Start date (YYYY-MM-DD)"`
+	To     string `help:"End date (YYYY-MM-DD)"`
+	Method string `help:"Accounting method: Accrual or Cash" enum:"Accrual,Cash," default:""`
+}
+
+func (cmd *ReportsGeneralLedgerCmd) Run(ctx context.Context) error {
+	client, err := getQuickBooksClient()
+	if err != nil {
+		return err
+	}
+
+	report, err := client.Reports().GeneralLedger(ctx, cmd.From, cmd.To, cmd.Method)
+	if err != nil {
+		return err
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, report)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"REPORT", "BASIS", "START", "END"}
+		rows := [][]string{{report.Header.ReportName, report.Header.ReportBasis, report.Header.StartPeriod, report.Header.EndPeriod}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
+	printReport(report)
+
+	return nil
+}
+
+type ReportsTransactionListCmd struct {
+	From string `help:"Start date (YYYY-MM-DD)"`
+	To   string `help:"End date (YYYY-MM-DD)"`
+}
+
+func (cmd *ReportsTransactionListCmd) Run(ctx context.Context) error {
+	client, err := getQuickBooksClient()
+	if err != nil {
+		return err
+	}
+
+	report, err := client.Reports().TransactionList(ctx, cmd.From, cmd.To)
 	if err != nil {
 		return err
 	}

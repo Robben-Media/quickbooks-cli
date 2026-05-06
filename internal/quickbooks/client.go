@@ -184,6 +184,83 @@ type PaymentLine struct {
 	LinkedTxn []LinkedTxn `json:"LinkedTxn,omitempty"`
 }
 
+// --- Purchase / expense types ---
+
+// Purchase represents a QuickBooks purchase, including expenses, checks, and credit card charges.
+type Purchase struct {
+	ID          string         `json:"Id"`
+	SyncToken   string         `json:"SyncToken"`
+	DocNumber   string         `json:"DocNumber"`
+	TxnDate     string         `json:"TxnDate"`
+	TotalAmt    float64        `json:"TotalAmt"`
+	PaymentType string         `json:"PaymentType"`
+	AccountRef  Ref            `json:"AccountRef"`
+	EntityRef   Ref            `json:"EntityRef"`
+	PrivateNote string         `json:"PrivateNote,omitempty"`
+	Line        []PurchaseLine `json:"Line,omitempty"`
+	MetaData    *MetaData      `json:"MetaData,omitempty"`
+}
+
+// PurchaseLine represents a line item on a purchase.
+type PurchaseLine struct {
+	ID          string  `json:"Id,omitempty"`
+	Amount      float64 `json:"Amount"`
+	DetailType  string  `json:"DetailType"`
+	Description string  `json:"Description,omitempty"`
+}
+
+// --- Bill payment types ---
+
+// BillPayment represents a QuickBooks vendor bill payment.
+type BillPayment struct {
+	ID          string            `json:"Id"`
+	SyncToken   string            `json:"SyncToken"`
+	DocNumber   string            `json:"DocNumber"`
+	TxnDate     string            `json:"TxnDate"`
+	TotalAmt    float64           `json:"TotalAmt"`
+	PayType     string            `json:"PayType"`
+	VendorRef   Ref               `json:"VendorRef"`
+	Line        []BillPaymentLine `json:"Line,omitempty"`
+	PrivateNote string            `json:"PrivateNote,omitempty"`
+	MetaData    *MetaData         `json:"MetaData,omitempty"`
+}
+
+// BillPaymentLine represents a line on a bill payment.
+type BillPaymentLine struct {
+	Amount    float64     `json:"Amount"`
+	LinkedTxn []LinkedTxn `json:"LinkedTxn,omitempty"`
+}
+
+// --- Journal entry types ---
+
+// JournalEntry represents a QuickBooks general journal entry.
+type JournalEntry struct {
+	ID          string             `json:"Id"`
+	SyncToken   string             `json:"SyncToken"`
+	DocNumber   string             `json:"DocNumber"`
+	TxnDate     string             `json:"TxnDate"`
+	PrivateNote string             `json:"PrivateNote,omitempty"`
+	Adjustment  bool               `json:"Adjustment"`
+	Line        []JournalEntryLine `json:"Line,omitempty"`
+	MetaData    *MetaData          `json:"MetaData,omitempty"`
+}
+
+// JournalEntryLine represents a line on a journal entry.
+type JournalEntryLine struct {
+	ID                     string                  `json:"Id,omitempty"`
+	Amount                 float64                 `json:"Amount"`
+	DetailType             string                  `json:"DetailType"`
+	Description            string                  `json:"Description,omitempty"`
+	JournalEntryLineDetail *JournalEntryLineDetail `json:"JournalEntryLineDetail,omitempty"`
+}
+
+// JournalEntryLineDetail provides posting details for a journal entry line.
+type JournalEntryLineDetail struct {
+	PostingType string `json:"PostingType"`
+	AccountRef  Ref    `json:"AccountRef"`
+	Entity      *Ref   `json:"Entity,omitempty"`
+}
+
 // LinkedTxn links a payment to a transaction.
 type LinkedTxn struct {
 	TxnID   string `json:"TxnId"`
@@ -303,15 +380,18 @@ type ColData struct {
 
 // QueryResponse wraps the QuickBooks query response.
 type QueryResponse struct {
-	Invoices      []Invoice  `json:"Invoice,omitempty"`
-	Bills         []Bill     `json:"Bill,omitempty"`
-	Payments      []Payment  `json:"Payment,omitempty"`
-	Customers     []Customer `json:"Customer,omitempty"`
-	Vendors       []Vendor   `json:"Vendor,omitempty"`
-	Items         []Item     `json:"Item,omitempty"`
-	StartPosition int        `json:"startPosition"`
-	MaxResults    int        `json:"maxResults"`
-	TotalCount    int        `json:"totalCount"`
+	Invoices       []Invoice      `json:"Invoice,omitempty"`
+	Bills          []Bill         `json:"Bill,omitempty"`
+	Payments       []Payment      `json:"Payment,omitempty"`
+	Purchases      []Purchase     `json:"Purchase,omitempty"`
+	BillPayments   []BillPayment  `json:"BillPayment,omitempty"`
+	JournalEntries []JournalEntry `json:"JournalEntry,omitempty"`
+	Customers      []Customer     `json:"Customer,omitempty"`
+	Vendors        []Vendor       `json:"Vendor,omitempty"`
+	Items          []Item         `json:"Item,omitempty"`
+	StartPosition  int            `json:"startPosition"`
+	MaxResults     int            `json:"maxResults"`
+	TotalCount     int            `json:"totalCount"`
 }
 
 type queryEnvelope struct {
@@ -328,6 +408,18 @@ type billEnvelope struct {
 
 type paymentEnvelope struct {
 	Payment Payment `json:"Payment"`
+}
+
+type purchaseEnvelope struct {
+	Purchase Purchase `json:"Purchase"`
+}
+
+type billPaymentEnvelope struct {
+	BillPayment BillPayment `json:"BillPayment"`
+}
+
+type journalEntryEnvelope struct {
+	JournalEntry JournalEntry `json:"JournalEntry"`
 }
 
 type customerEnvelope struct {
@@ -349,6 +441,21 @@ func (c *Client) Bills() *BillsService {
 // Payments returns the payments service.
 func (c *Client) Payments() *PaymentsService {
 	return &PaymentsService{client: c}
+}
+
+// Purchases returns the purchases service.
+func (c *Client) Purchases() *PurchasesService {
+	return &PurchasesService{client: c}
+}
+
+// BillPayments returns the bill payments service.
+func (c *Client) BillPayments() *BillPaymentsService {
+	return &BillPaymentsService{client: c}
+}
+
+// JournalEntries returns the journal entries service.
+func (c *Client) JournalEntries() *JournalEntriesService {
+	return &JournalEntriesService{client: c}
 }
 
 // Customers returns the customers service.
@@ -620,6 +727,123 @@ func (s *PaymentsService) Create(ctx context.Context, req CreatePaymentRequest) 
 	return &envelope.Payment, nil
 }
 
+// --- Purchases Service ---
+
+// PurchasesService handles purchase operations.
+type PurchasesService struct {
+	client *Client
+}
+
+// List queries purchases.
+func (s *PurchasesService) List(ctx context.Context, query string) (*QueryResponse, error) {
+	if query == "" {
+		query = "SELECT * FROM Purchase"
+	}
+
+	path := s.client.queryPath() + "?query=" + url.QueryEscape(query) + "&minorversion=" + minorVersion
+
+	var envelope queryEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("list purchases: %w", err)
+	}
+
+	return &envelope.QueryResponse, nil
+}
+
+// Get retrieves a single purchase by ID.
+func (s *PurchasesService) Get(ctx context.Context, id string) (*Purchase, error) {
+	if id == "" {
+		return nil, errIDRequired
+	}
+
+	path := s.client.companyPath("purchase/"+id) + "?minorversion=" + minorVersion
+
+	var envelope purchaseEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("get purchase: %w", err)
+	}
+
+	return &envelope.Purchase, nil
+}
+
+// --- Bill Payments Service ---
+
+// BillPaymentsService handles vendor bill payment operations.
+type BillPaymentsService struct {
+	client *Client
+}
+
+// List queries bill payments.
+func (s *BillPaymentsService) List(ctx context.Context, query string) (*QueryResponse, error) {
+	if query == "" {
+		query = "SELECT * FROM BillPayment"
+	}
+
+	path := s.client.queryPath() + "?query=" + url.QueryEscape(query) + "&minorversion=" + minorVersion
+
+	var envelope queryEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("list bill payments: %w", err)
+	}
+
+	return &envelope.QueryResponse, nil
+}
+
+// Get retrieves a single bill payment by ID.
+func (s *BillPaymentsService) Get(ctx context.Context, id string) (*BillPayment, error) {
+	if id == "" {
+		return nil, errIDRequired
+	}
+
+	path := s.client.companyPath("billpayment/"+id) + "?minorversion=" + minorVersion
+
+	var envelope billPaymentEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("get bill payment: %w", err)
+	}
+
+	return &envelope.BillPayment, nil
+}
+
+// --- Journal Entries Service ---
+
+// JournalEntriesService handles journal entry operations.
+type JournalEntriesService struct {
+	client *Client
+}
+
+// List queries journal entries.
+func (s *JournalEntriesService) List(ctx context.Context, query string) (*QueryResponse, error) {
+	if query == "" {
+		query = "SELECT * FROM JournalEntry"
+	}
+
+	path := s.client.queryPath() + "?query=" + url.QueryEscape(query) + "&minorversion=" + minorVersion
+
+	var envelope queryEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("list journal entries: %w", err)
+	}
+
+	return &envelope.QueryResponse, nil
+}
+
+// Get retrieves a single journal entry by ID.
+func (s *JournalEntriesService) Get(ctx context.Context, id string) (*JournalEntry, error) {
+	if id == "" {
+		return nil, errIDRequired
+	}
+
+	path := s.client.companyPath("journalentry/"+id) + "?minorversion=" + minorVersion
+
+	var envelope journalEntryEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("get journal entry: %w", err)
+	}
+
+	return &envelope.JournalEntry, nil
+}
+
 // --- Customers Service ---
 
 // CustomersService handles customer operations.
@@ -777,6 +1001,54 @@ func (s *ReportsService) BalanceSheet(ctx context.Context, date string) (*Report
 	var report Report
 	if err := s.client.Get(ctx, path, &report); err != nil {
 		return nil, fmt.Errorf("get balance sheet report: %w", err)
+	}
+
+	return &report, nil
+}
+
+// GeneralLedger retrieves the general ledger report.
+func (s *ReportsService) GeneralLedger(ctx context.Context, from, to, method string) (*Report, error) {
+	params := url.Values{"minorversion": {minorVersion}}
+
+	if from != "" {
+		params.Set("start_date", from)
+	}
+
+	if to != "" {
+		params.Set("end_date", to)
+	}
+
+	if method != "" {
+		params.Set("accounting_method", method)
+	}
+
+	path := s.client.companyPath("reports/GeneralLedger") + "?" + params.Encode()
+
+	var report Report
+	if err := s.client.Get(ctx, path, &report); err != nil {
+		return nil, fmt.Errorf("get general ledger report: %w", err)
+	}
+
+	return &report, nil
+}
+
+// TransactionList retrieves the transaction list report.
+func (s *ReportsService) TransactionList(ctx context.Context, from, to string) (*Report, error) {
+	params := url.Values{"minorversion": {minorVersion}}
+
+	if from != "" {
+		params.Set("start_date", from)
+	}
+
+	if to != "" {
+		params.Set("end_date", to)
+	}
+
+	path := s.client.companyPath("reports/TransactionList") + "?" + params.Encode()
+
+	var report Report
+	if err := s.client.Get(ctx, path, &report); err != nil {
+		return nil, fmt.Errorf("get transaction list report: %w", err)
 	}
 
 	return &report, nil
