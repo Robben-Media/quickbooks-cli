@@ -259,6 +259,12 @@ quickbooks-cli version
 | `--no-input` | Never prompt; fail instead (CI mode) |
 | `--color` | Color output: `auto`, `always`, or `never` |
 
+## Output Notes
+
+- List commands with `--json` return the full QuickBooks query response envelope.
+- `--plain` output uses stable TSV columns for scripting.
+- Typed purchase commands validate their transaction type: `checks get` requires `PaymentType = Check`, and `credit-card-charges get` requires `PaymentType = CreditCard`.
+
 ## License
 
 MIT
