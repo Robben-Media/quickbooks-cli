@@ -33,7 +33,7 @@ func (cmd *SalesReceiptsListCmd) Run(ctx context.Context) error {
 	}
 
 	if outfmt.IsPlain(ctx) {
-		headers := []string{"ID", "DOC_NUM", "CUSTOMER", "PAYMENT_METHOD", "DEPOSIT_ACCOUNT", "TOTAL", "DATE"}
+		headers := []string{"ID", "DOC_NUM", "CUSTOMER", "PAYMENT_METHOD", "DEPOSIT_ACCOUNT", "DATE", "TOTAL"}
 
 		var rows [][]string
 		for _, receipt := range result.SalesReceipts {
@@ -43,8 +43,8 @@ func (cmd *SalesReceiptsListCmd) Run(ctx context.Context) error {
 				receipt.CustomerRef.Name,
 				receipt.PaymentMethodRef.Name,
 				receipt.DepositToAccountRef.Name,
-				fmt.Sprintf("%.2f", receipt.TotalAmt),
 				receipt.TxnDate,
+				fmt.Sprintf("%.2f", receipt.TotalAmt),
 			})
 		}
 
