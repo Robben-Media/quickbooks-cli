@@ -33,7 +33,7 @@ func (cmd *BillPaymentsListCmd) Run(ctx context.Context) error {
 	}
 
 	if outfmt.IsPlain(ctx) {
-		headers := []string{"ID", "DOC_NUM", "VENDOR", "PAY_TYPE", "TOTAL", "DATE"}
+		headers := []string{"ID", "DOC_NUM", "VENDOR", "PAY_TYPE", "DATE", "TOTAL"}
 
 		var rows [][]string
 		for _, payment := range result.BillPayments {
@@ -42,8 +42,8 @@ func (cmd *BillPaymentsListCmd) Run(ctx context.Context) error {
 				payment.DocNumber,
 				payment.VendorRef.Name,
 				payment.PayType,
-				fmt.Sprintf("%.2f", payment.TotalAmt),
 				payment.TxnDate,
+				fmt.Sprintf("%.2f", payment.TotalAmt),
 			})
 		}
 

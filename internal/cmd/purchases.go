@@ -29,7 +29,7 @@ func (cmd *PurchasesListCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	return writePurchases(ctx, result.Purchases, "purchases")
+	return writePurchases(ctx, result, "purchases")
 }
 
 type PurchasesGetCmd struct {
@@ -75,7 +75,7 @@ func (cmd *ChecksListCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	return writePurchases(ctx, result.Purchases, "checks")
+	return writePurchases(ctx, result, "checks")
 }
 
 type ChecksGetCmd struct {
@@ -91,6 +91,9 @@ func (cmd *ChecksGetCmd) Run(ctx context.Context) error {
 	result, err := client.Purchases().Get(ctx, cmd.ID)
 	if err != nil {
 		return err
+	}
+	if result.PaymentType != "Check" {
+		return fmt.Errorf("purchase %s is not a check (PaymentType: %s)", cmd.ID, result.PaymentType)
 	}
 
 	return writePurchase(ctx, result)
@@ -121,7 +124,7 @@ func (cmd *CreditCardChargesListCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	return writePurchases(ctx, result.Purchases, "credit card charges")
+	return writePurchases(ctx, result, "credit card charges")
 }
 
 type CreditCardChargesGetCmd struct {
@@ -138,17 +141,22 @@ func (cmd *CreditCardChargesGetCmd) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if result.PaymentType != "CreditCard" {
+		return fmt.Errorf("purchase %s is not a credit card charge (PaymentType: %s)", cmd.ID, result.PaymentType)
+	}
 
 	return writePurchase(ctx, result)
 }
 
-func writePurchases(ctx context.Context, purchases []quickbooks.Purchase, label string) error {
+func writePurchases(ctx context.Context, result *quickbooks.QueryResponse, label string) error {
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(os.Stdout, map[string]any{"Purchase": purchases})
+		return outfmt.WriteJSON(os.Stdout, result)
 	}
 
+	purchases := result.Purchases
+
 	if outfmt.IsPlain(ctx) {
-		headers := []string{"ID", "DOC_NUM", "PAYMENT_TYPE", "PAYEE", "ACCOUNT", "TOTAL", "DATE"}
+		headers := []string{"ID", "DOC_NUM", "PAYMENT_TYPE", "PAYEE", "ACCOUNT", "DATE", "TOTAL"}
 
 		var rows [][]string
 		for _, purchase := range purchases {
@@ -158,8 +166,8 @@ func writePurchases(ctx context.Context, purchases []quickbooks.Purchase, label 
 				purchase.PaymentType,
 				purchase.EntityRef.Name,
 				purchase.AccountRef.Name,
-				fmt.Sprintf("%.2f", purchase.TotalAmt),
 				purchase.TxnDate,
+				fmt.Sprintf("%.2f", purchase.TotalAmt),
 			})
 		}
 

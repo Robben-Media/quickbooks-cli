@@ -184,6 +184,23 @@ type PaymentLine struct {
 	LinkedTxn []LinkedTxn `json:"LinkedTxn,omitempty"`
 }
 
+// --- Sales receipt types ---
+
+// SalesReceipt represents a QuickBooks sales receipt.
+type SalesReceipt struct {
+	ID                  string        `json:"Id"`
+	SyncToken           string        `json:"SyncToken"`
+	DocNumber           string        `json:"DocNumber"`
+	TxnDate             string        `json:"TxnDate"`
+	TotalAmt            float64       `json:"TotalAmt"`
+	CustomerRef         Ref           `json:"CustomerRef"`
+	DepositToAccountRef Ref           `json:"DepositToAccountRef"`
+	PaymentMethodRef    Ref           `json:"PaymentMethodRef"`
+	Line                []InvoiceLine `json:"Line,omitempty"`
+	PrivateNote         string        `json:"PrivateNote,omitempty"`
+	MetaData            *MetaData     `json:"MetaData,omitempty"`
+}
+
 // --- Purchase / expense types ---
 
 // Purchase represents a QuickBooks purchase, including expenses, checks, and credit card charges.
@@ -383,6 +400,7 @@ type QueryResponse struct {
 	Invoices       []Invoice      `json:"Invoice,omitempty"`
 	Bills          []Bill         `json:"Bill,omitempty"`
 	Payments       []Payment      `json:"Payment,omitempty"`
+	SalesReceipts  []SalesReceipt `json:"SalesReceipt,omitempty"`
 	Purchases      []Purchase     `json:"Purchase,omitempty"`
 	BillPayments   []BillPayment  `json:"BillPayment,omitempty"`
 	JournalEntries []JournalEntry `json:"JournalEntry,omitempty"`
@@ -408,6 +426,10 @@ type billEnvelope struct {
 
 type paymentEnvelope struct {
 	Payment Payment `json:"Payment"`
+}
+
+type salesReceiptEnvelope struct {
+	SalesReceipt SalesReceipt `json:"SalesReceipt"`
 }
 
 type purchaseEnvelope struct {
@@ -441,6 +463,11 @@ func (c *Client) Bills() *BillsService {
 // Payments returns the payments service.
 func (c *Client) Payments() *PaymentsService {
 	return &PaymentsService{client: c}
+}
+
+// SalesReceipts returns the sales receipts service.
+func (c *Client) SalesReceipts() *SalesReceiptsService {
+	return &SalesReceiptsService{client: c}
 }
 
 // Purchases returns the purchases service.
@@ -725,6 +752,45 @@ func (s *PaymentsService) Create(ctx context.Context, req CreatePaymentRequest) 
 	}
 
 	return &envelope.Payment, nil
+}
+
+// --- Sales Receipts Service ---
+
+// SalesReceiptsService handles sales receipt operations.
+type SalesReceiptsService struct {
+	client *Client
+}
+
+// List queries sales receipts.
+func (s *SalesReceiptsService) List(ctx context.Context, query string) (*QueryResponse, error) {
+	if query == "" {
+		query = "SELECT * FROM SalesReceipt"
+	}
+
+	path := s.client.queryPath() + "?query=" + url.QueryEscape(query) + "&minorversion=" + minorVersion
+
+	var envelope queryEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("list sales receipts: %w", err)
+	}
+
+	return &envelope.QueryResponse, nil
+}
+
+// Get retrieves a single sales receipt by ID.
+func (s *SalesReceiptsService) Get(ctx context.Context, id string) (*SalesReceipt, error) {
+	if id == "" {
+		return nil, errIDRequired
+	}
+
+	path := s.client.companyPath("salesreceipt/"+id) + "?minorversion=" + minorVersion
+
+	var envelope salesReceiptEnvelope
+	if err := s.client.Get(ctx, path, &envelope); err != nil {
+		return nil, fmt.Errorf("get sales receipt: %w", err)
+	}
+
+	return &envelope.SalesReceipt, nil
 }
 
 // --- Purchases Service ---

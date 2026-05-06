@@ -1,6 +1,6 @@
 # quickbooks-cli
 
-A CLI tool for [QuickBooks Online](https://quickbooks.intuit.com/) built with Go. Manage invoices, bills, payments, purchases, vendor payments, journal entries, customers, vendors, items, and financial reports from the command line.
+A CLI tool for [QuickBooks Online](https://quickbooks.intuit.com/) built with Go. Manage invoices, bills, payments, sales receipts, purchases, vendor payments, journal entries, customers, vendors, items, and financial reports from the command line.
 
 ## Installation
 
@@ -112,6 +112,19 @@ quickbooks-cli payments list --query "SELECT * FROM Payment"
 
 # Create a payment
 quickbooks-cli payments create --customer 42 --amount 500.00 --invoice 123
+```
+
+### sales-receipts -- Sales receipt operations
+
+```bash
+# List sales receipts
+quickbooks-cli sales-receipts list
+
+# Filter sales receipts
+quickbooks-cli sales-receipts list --query "SELECT * FROM SalesReceipt WHERE TotalAmt > '100'"
+
+# Get sales receipt details
+quickbooks-cli sales-receipts get 789
 ```
 
 ### purchases -- Expense and purchase operations
@@ -245,6 +258,12 @@ quickbooks-cli version
 | `--force` | Skip confirmation prompts |
 | `--no-input` | Never prompt; fail instead (CI mode) |
 | `--color` | Color output: `auto`, `always`, or `never` |
+
+## Output Notes
+
+- List commands with `--json` return the full QuickBooks query response envelope.
+- `--plain` output uses stable TSV columns for scripting.
+- Typed purchase commands validate their transaction type: `checks get` requires `PaymentType = Check`, and `credit-card-charges get` requires `PaymentType = CreditCard`.
 
 ## License
 
